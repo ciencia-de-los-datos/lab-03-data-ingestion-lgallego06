@@ -12,36 +12,53 @@ espacio entre palabra y palabra.
 
 import pandas as pd
 import re
-def clean_keywords(row):
-    # Utilizar expresión regular para limpiar las palabras clave en la fila
-    palabras_clave = re.findall(r'\b\w+(?:[-\s]\w+)*\b', row)
-    # Unir las palabras con un solo espacio entre cada una
-    return ' '.join(palabras_clave)
+
+    
 
 def ingest_data():
-    df=pd.read_fwf('clusters_report.txt', colspecs='infer',widths=[9,16,16,80],header=None,
-                   names=['cluster','cantidad_de_palabras_clave','porcentaje_de_palabras_clave','principales_palabras_claves'],
-                   converters={'porcentaje_de_palabras_clave':lambda x: x.rstrip(' %').replace(',','.')}).drop(index={0,1,2}).ffill()
-    #df=df.iloc[3:]
-    df.columns=df.columns.str.lower()
-    df.columns=df.columns.str.replace(' ','_')
-    # Reemplazar los espacios en blanco en las palabras clave con un solo espacio
-    df['principales_palabras_claves'] = df['principales_palabras_claves'].str.replace(r'\s+', ' ')
-    # Utilizar regex para reemplazar múltiples espacios en blanco con un solo espacio
-    #"df['principales_palabras_claves'] = df['principales_palabras_claves'].apply(lambda x: re.sub(r'\s+', ' ', x))
 
-    # Convertir las palabras clave en una lista de palabras separadas por comas y un solo espacio entre cada palabra
-    #df['principales_palabras_claves'] = df['principales_palabras_claves'].str.split(', ')
+    #
+    # Inserte su código aquí
+    #
+
+    # Leer el archivo con pd.read_fwf()
+    df = pd.read_fwf("clusters_report.txt", # Este método se utiliza para leer archivos de texto con campos de ancho fijo
+                    # Pandas infiere automáticamente las posiciones de las columnas basándose en los datos presentes en el archivo.
+                    colspecs="infer", 
+                    # especifica la anchura de cada columna en el archivo
+                    widths=[9, 16, 16, 80], 
+                    # No hay una fila con encabezado
+                    header=None, 
+                    # # Nombres de cada columa
+                    names=["cluster", "cantidad_de_palabras_clave", "porcentaje_de_palabras_clave", "principales_palabras_clave"], 
+                    # la columna "porcentaje_de_palabras_clave" se convierte eliminando el signo de porcentaje (%) al final de cada valor 
+                    # y reemplazando las comas (",") con puntos (".") para permitir la conversión a un tipo numérico posteriormente.
+                    converters={"porcentaje_de_palabras_clave": lambda x: x.rstrip(" %").replace(",", ".")}
+                    ).drop(index={0,1,2}).ffill()
+    # Convertir los nombres de las columnas a minúsculas
+    df.columns = df.columns.str.lower()
+
+    # Reemplazar espacios por guiones bajos en los nombres de las columnas
+    df.columns = df.columns.str.replace(' ', '_')
+
+    # astype(), está pasando un diccionario donde las claves son los nombres de las columnas
+    # y los valores son los nuevos tipos de datos para las columnas.
+    df = df.astype  ({ "cluster": int, 
+                    "cantidad_de_palabras_clave": int, 
+                    "porcentaje_de_palabras_clave": float,
+                    "principales_palabras_clave": str
+                    })
+
+    # Agrupa por la tres columnas y principales palabra clave la convierte en una cadena separada por espacio
+    df = df.groupby(["cluster","cantidad_de_palabras_clave","porcentaje_de_palabras_clave"])["principales_palabras_clave"].apply(lambda x: ' '.join(map(str,x))).reset_index()
     
-    df['principales_palabras_claves'] = df['principales_palabras_claves'].apply(clean_keywords)
-    df['principales_palabras_claves'] = df['principales_palabras_claves'].str.replace(' ', ', ')
-
-
-    # Mostrar el DataFrame sin indexado adicional
-    print(df.to_string(index=False))
-
-    # Mostrar el DataFrame
+    # la columna "porcentaje_de_palabras_clave" redondea valores a 1 decimal.
+    df["porcentaje_de_palabras_clave"] = df["porcentaje_de_palabras_clave"].apply(lambda x: round(x,1))
+    
+    # elimina los espacios en blanco adicionales y los puntos al final de cada cadena en la columna "principales_palabras_clave"
+    df["principales_palabras_clave"] = df["principales_palabras_clave"].apply(lambda x: re.sub(r'\s+', ' ',x).rstrip("."))
     print(df)
+  
     return df
 
 # Llamar a la función para ingestar los datos
